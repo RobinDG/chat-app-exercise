@@ -8,5 +8,16 @@
   },
   "scripts": {
     "start": "node index.js"
-  }
+  },
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/socketio/chat-example.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/socketio/chat-example/issues"
+  },
+  "homepage": "https://github.com/socketio/chat-example#readme"
 }

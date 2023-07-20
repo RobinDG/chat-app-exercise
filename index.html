@@ -2,47 +2,192 @@
 <html>
   <head>
     <title>Socket.IO chat</title>
-    <style>
-      body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-
-      #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
-      #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
-      #input:focus { outline: none; }
-      #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
-
-      #messages { list-style-type: none; margin: 0; padding: 0; }
-      #messages > li { padding: 0.5rem 1rem; }
-      #messages > li:nth-child(odd) { background: #efefef; }
-    </style>
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <ul id="messages"></ul>
+    
+    <ul id="conversation"></ul>
+    
+    <div id="typing_status"></div>
+    
     <form id="form" action="">
       <input id="input" autocomplete="off" /><button>Send</button>
     </form>
+
     <script src="/socket.io/socket.io.js"></script>
 
     <script>
-      var socket = io();
 
-      var messages = document.getElementById('messages');
-      var form = document.getElementById('form');
-      var input = document.getElementById('input');
+      class User {
+        constructor(name = undefined, color = undefined) {
+          this.name = name ? name : this.genUserName();
+          this.color = color ? color : this.getColor();
+        }
+
+        genUserName = () => {
+          const first_names = ["Harry", "Ron", "Hermione", "Ginny", "Fred", "George", "Neville", "Luna", "Cho", "Cedric", "Draco", "Crabbe", "Goyle", "Pansy", "Vincent", "Gregory", "Millicent", "Blaise", "Theodore", "Daphne", "Tracey", "Marcus", "Adrian", "Roger", "Penelope", "Terry", "Michael", "Anthony", "Ernie", "Justin", "Susan", "Hannah", "Zacharias", "Wayne", "Megan", "Lisa", "Padma", "Parvati", "Dean", "Seamus", "Lavender", "Colin", "Dennis", "Cormac", "Romilda", "Marietta", "Katie", "Angelina", "Alicia", "Oliver", "Lee", "Jimmy", "Ritchie"];
+          const last_names = ["Potter", "Weasley", "Granger", "Malfoy", "Crabbe", "Goyle", "Longbottom", "Lovegood", "Chang", "Diggory", "Zabini", "Greengrass", "Bones", "Boot", "Corner", "Creevey", "Davis", "Edgecombe", "Finch-Fletchley", "Goldstein", "Macmillan", "Montague", "Pucey", "Sloper", "Thomas", "Turpin", "Clearwater", "Brocklehurst", "Bulstrode", "Coote", "Entwhistle", "Fawcett", "Finnigan", "Brown", "Patil", "Jordan", "Spinnet", "Bell", "Johnson", "Wood", "Creevey", "Davies", "McLaggen", "Vane", "Bell", "Higgs", "Parkinson", "Bletchley", "Bletchley", "Bryce", "Carmichael", "Cauldwell", "Chambers", "Derrick", "Dunstan", "Fawcett", "Fawley", "Fawley", "Finnigan", "Frobisher", "Goshawk"];
+          
+          return first_names[Math.floor(Math.random() * first_names.length)] + " " + last_names[Math.floor(Math.random() * last_names.length)];
+        }
+        
+        getColor = () => { 
+          return "hsl(" + 360 * Math.random() + ',' +
+                    (25 + 70 * Math.random()) + '%,' + 
+                    (85 + 10 * Math.random()) + '%)'
+        }
+      }
+
+      class ChatHandler {
+        constructor(user) {
+          this.socket = io();
+
+          this.user = user.name;
+          this.color = user.color;
+
+          this.messages = document.getElementById('conversation');
+          this.typingStatusDiv = document.getElementById('typing_status');
+          this.form = document.getElementById('form');
+          this.input = document.getElementById('input');
+          this.input.focus();
+        }
+
+        displayUserName = (sender) => {
+          const item_user = document.createElement('li');
+          item_user.textContent = sender + " says:";
+          item_user.className = "user";
+          this.messages.appendChild(item_user);
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        #createSpan = (text) => {
+          const span = document.createElement('span');
+          span.textContent = text;
+          return span;
+        }
+
+        #createMessageListItem = (message, sender, sender_color) => {
+          const span = this.#createSpan(message);
+          const item = document.createElement('li');
+          item.appendChild(span);
+          item.style.background = sender_color;
+          item.setAttribute("data-sender", sender);
+          if (sender == this.user) {
+            item.style.textAlign = "right";
+            item.style.marginLeft = "35%";
+          } 
+          item.className = "message";
+          
+          return item;
+        }
+
+        displayMessage = ({user: sender, message, color: sender_color}) => {
+          const previous_sender = this.messages.lastElementChild ? this.messages.lastElementChild.getAttribute("data-sender") : "";
+
+          if (sender != previous_sender && sender != this.user) {
+            this.displayUserName(sender);
+          }
+          const item = this.#createMessageListItem(message, sender, sender_color);
+          this.messages.appendChild(item);
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        displayUsersTyping = (usersTyping) => {
+          // remove current user from list of users typing
+          usersTyping = usersTyping.filter((userTyping) => userTyping != this.user);
+          if (usersTyping.length == 0) {
+            this.typingStatusDiv.textContent = "";
+          } else if (usersTyping.length == 1) {
+            this.typingStatusDiv.textContent = usersTyping[0] + " is typing...";
+          } else if (usersTyping.length < 3) {
+            this.typingStatusDiv.textContent = usersTyping.join(", ") + " are typing...";
+          } else if (usersTyping.length >= 3) {
+            this.typingStatusDiv.textContent = "A bunch of people are typing...";
+          }
+        }
+
+        displayConnection = (user) => {
+          const item = document.createElement('li');
+          item.textContent = user + " has joined the chat!";
+          item.className = "connection";
+          this.messages.appendChild(item);
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        displayDisconnection = (user) => {
+          const item = document.createElement('li');
+          item.textContent = user + " has left the chat!";
+          item.className = "connection";
+          this.messages.appendChild(item);
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        replayHistory = (history) => {
+          history.forEach(({event, data, timestamp}) => {
+            switch (event) {
+              case "chat message":
+                this.displayMessage(data);
+                break;
+              case "user connected":
+                this.displayConnection(data);
+                break;
+              case "user disconnected":
+                this.displayDisconnection(data);
+                break;
+              default:
+                var msg = "Something went wrong";
+                console.warn(msg);
+            }
+          });
+        }
+        
+      }
+
+      const user = new User();
+      const chat = new ChatHandler(user);
+
+      chat.socket.emit('join', chat.user);
+      chat.socket.emit('user connected', chat.user);
 
       form.addEventListener('submit', function(e) {
         e.preventDefault();
         if (input.value) {
-          socket.emit('chat message', input.value);
+          message = {
+            user: user.name,
+            message: input.value,
+            color: user.color,
+          }
+          chat.socket.emit("stopped typing", user.name)
+          chat.socket.emit('chat message', message);
           input.value = '';
         }
       });
-
-      socket.on('chat message', function(msg) {
-        var item = document.createElement('li');
-        item.textContent = msg;
-        messages.appendChild(item);
-        window.scrollTo(0, document.body.scrollHeight);
+      
+      var typingTimer;
+      input.addEventListener("input", (e) => {
+        if (input.value == "") {
+          chat.socket.emit("stopped typing", user.name);
+          return;
+        }
+        if (typingTimer) clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+          chat.socket.emit("stopped typing", user.name);
+        }, 2000);
+        chat.socket.emit("typing", user.name);
       });
+
+
+      // detect when user disconnects and send to server
+      window.addEventListener("beforeunload", (e) => {
+        chat.socket.emit("user disconnected", user.name);
+      });
+
+      chat.socket.on('chat message', chat.displayMessage);
+      chat.socket.on('history', chat.replayHistory);
+      chat.socket.on('user connected', chat.displayConnection);
+      chat.socket.on("typing", chat.displayUsersTyping);
+      chat.socket.on('user disconnected', chat.displayDisconnection);
+
     </script>
   </body>
 </html>
