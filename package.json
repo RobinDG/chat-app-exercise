@@ -12,12 +12,12 @@
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/socketio/chat-example.git"
+    "url": "git+https://github.com/RobinDG/chat-app-exercise"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/socketio/chat-example/issues"
+    "url": "https://github.com/RobinDG/chat-app-exercise/issues"
   },
-  "homepage": "https://github.com/socketio/chat-example#readme"
+  "homepage": "https://github.com/RobinDG/chat-app-exercise#readme"
 }
