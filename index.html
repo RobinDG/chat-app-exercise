@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Socket.IO chat</title>
+    <title>RPG app</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     
     <ul id="conversation"></ul>
     
-    <div id="typing_status"></div>
     
-    <form id="form" action="">
-      <input id="input" autocomplete="off" /><button>Send</button>
-    </form>
+    <div id="edit-zone">
+      <div id="typing_status"></div>
+      <form id="form" action="">
+        <textarea id="input" autocomplete="off" rows="1" autofocus></textarea><button>Send</button>
+      </form>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
 
@@ -49,7 +51,6 @@
           this.typingStatusDiv = document.getElementById('typing_status');
           this.form = document.getElementById('form');
           this.input = document.getElementById('input');
-          this.input.focus();
         }
 
         displayUserName = (sender) => {
